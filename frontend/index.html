@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Liquidador IIBB</title>
+    <meta charset="UTF-8">
+    <!-- CSS de Grid.js -->
+    <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- MENÚ DE NAVEGACIÓN LATERAL -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>Liquidador IIBB</h2>
+            </div>
+            <ul class="nav-list">
+                <li><a href="#" onclick="showModule('module-liquidacion')" class="nav-link active">Nueva Liquidación</a></li>
+                <li><a href="#" onclick="showModule('module-liquidaciones-guardadas')" class="nav-link">Liquidaciones Guardadas</a></li>
+                <li><a href="#" onclick="showModule('module-clientes')" class="nav-link">Gestión de Clientes</a></li>
+                <li><a href="#" onclick="showModule('module-actividades')" class="nav-link">Actividades y Alícuotas</a></li>
+                <li><a href="#" onclick="showModule('module-coeficientes')" class="nav-link">Coeficientes Anuales</a></li>
+                <li><a href="#" onclick="showModule('module-ventas')" class="nav-link">Cargar Ventas</a></li>
+                <li><a href="#" onclick="showModule('module-creditos')" class="nav-link">Créditos Fiscales</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button onclick="toggleTheme()">Alternar Tema</button>
+            </div>
+        </nav>
+
+        <!-- CONTENIDO PRINCIPAL QUE CAMBIA -->
+        <main class="main-content">
+            <header class="main-header">
+                <label for="cliente-activo-select">Cliente Activo:</label>
+                <select id="cliente-activo-select"></select>
+            </header>
+
+            <!-- MÓDULO DE LIQUIDACIÓN -->
+            <section id="module-liquidacion" class="module">
+                <h1>Nueva Liquidación Mensual (CM03)</h1>
+                <div class="card">
+                    <div class="form-inline">
+                        <div class="form-group">
+                            <label for="liq-anio">Año:</label>
+                            <input type="number" id="liq-anio" style="width: 100px;">
+                        </div>
+                        <div class="form-group">
+                            <label for="liq-mes">Mes:</label>
+                            <select id="liq-mes" style="width: 80px;"></select>
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <button onclick="generarLiquidacion()">Generar y Guardar Liquidación</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Resultado de la Nueva Liquidación</h2>
+                    <div id="grid-liquidacion-wrapper"></div>
+                    <div class="summary" style="margin-top: 2em; text-align: right; font-size: 1.1em;">
+                        <div ><strong>Total Impuesto Determinado:</strong> <span id="total-impuesto">0.00</span></div>
+                        <div><strong>Total Créditos del Período:</strong> <span id="total-creditos">0.00</span></div>
+                        <div style="font-size: 1.2em; margin-top: 1em;"><strong>TOTAL A PAGAR:</strong> <span id="total-a-pagar">0.00</span></div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- NUEVO MÓDULO DE LIQUIDACIONES GUARDADAS -->
+             <section id="module-liquidaciones-guardadas" class="module">
+                <h1>Liquidaciones Guardadas</h1>
+                <div class="card">
+                    <h2>Historial de Liquidaciones</h2>
+                    <p>Aquí puedes ver y administrar las liquidaciones que ya has generado y guardado para el cliente activo.</p>
+                    <div id="grid-liquidaciones-guardadas-wrapper"></div>
+                </div>
+            </section>
+
+
+            <!-- MÓDULO DE CLIENTES -->
+            <section id="module-clientes" class="module">
+                <h1>Gestión de Clientes</h1>
+                <div class="card">
+                    <h2>Nuevo Cliente</h2>
+                    <div class="form-inline" id="form-cliente">
+                        <div class="form-group" style="flex: 2;"><label for="razon-social">Razón Social</label><input id="razon-social" type="text" placeholder="Nombre de la empresa o persona"></div>
+                        <div class="form-group" style="flex: 1;"><label for="cuit">CUIT</label><input id="cuit" type="text" placeholder="00-00000000-0"></div>
+                        <div class="form-group" style="align-self: flex-end;"><button onclick="guardarCliente()">Guardar Cliente</button></div>
+                    </div>
+                    <div id="resultado-form" class="form-message"></div>
+                </div>
+                <div class="card">
+                    <h2>Clientes Registrados</h2>
+                    <div id="grid-clientes-wrapper"></div>
+                </div>
+            </section>
+
+            <!-- MÓDULO DE ACTIVIDADES Y ALÍCUOTAS -->
+            <section id="module-actividades" class="module">
+                <h1>Actividades y Alícuotas</h1>
+                <div class="two-panel-layout">
+                    <div class="panel card">
+                        <h2>Actividades Globales</h2>
+                        <ul id="lista-actividades" class="item-list"></ul>
+                        <div class="form-inline">
+                            <input type="text" id="nueva-actividad-codigo" placeholder="Código">
+                            <input type="text" id="nueva-actividad-desc" placeholder="Descripción">
+                            <button onclick="crearActividad()">Agregar</button>
+                        </div>
+                    </div>
+                    <div class="panel card">
+                        <h2>Alícuotas para <span id="actividad-seleccionada-nombre">...</span></h2>
+                        <div id="grid-alicuotas-wrapper"></div>
+                        <button onclick="guardarAlicuotas()">Guardar Alícuotas</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MÓDULO DE COEFICIENTES ANUALES -->
+            <section id="module-coeficientes" class="module">
+                <h1>Coeficientes Anuales</h1>
+                <div class="main-header" style="border-top: 1px solid var(--color-border); padding-top: 1em;">
+                    <label for="coef-anio-fiscal">Año Fiscal:</label>
+                    <input type="number" id="coef-anio-fiscal" style="width: 100px;">
+                    <button onclick="cargarResumenCoeficientes()">Cargar Año</button>
+                </div>
+                <div class="two-panel-layout">
+                    <div class="panel card">
+                        <h2>Períodos Cargados</h2>
+                        <div id="grid-coeficientes-resumen-wrapper"></div>
+                        <button onclick="nuevoPeriodoCoeficientes()">Nuevo Período</button>
+                    </div>
+                    <div class="panel card">
+                        <h2 id="coef-detalle-titulo">Detalle de Coeficientes</h2>
+                         <div id="grid-coeficientes-detalle-wrapper"></div>
+                        <button id="btn-guardar-coeficientes" style="display: none;" onclick="guardarCoeficientes()">Guardar Cambios</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MÓDULO DE CARGA DE VENTAS -->
+            <section id="module-ventas" class="module">
+                <h1>Carga de Comprobantes de Venta</h1>
+                <div class="two-panel-layout">
+                    <div class="panel card" style="flex: 2;">
+                        <h2 id="venta-form-titulo">Nuevo Comprobante</h2>
+                        <form id="form-venta" onsubmit="event.preventDefault(); guardarVenta();">
+                            <div class="form-row">
+                                <div class="form-group"><label for="venta-fecha">Fecha (DD/MM/YYYY)</label><input type="text" id="venta-fecha" required></div>
+                                <div class="form-group"><label for="venta-tipo">Tipo Comprobante</label><select id="venta-tipo"><option>Factura C</option><option>Factura A</option><option>Nota de Crédito C</option><option>Nota de Crédito A</option><option>Otro</option></select></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label for="venta-pv">Punto de Venta</label><input type="number" id="venta-pv" placeholder="Ej: 1" required></div>
+                                <div class="form-group"><label for="venta-numero">Número</label><input type="number" id="venta-numero" placeholder="Ej: 12345" required></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label for="venta-cuit-cliente">CUIT Cliente (opcional)</label><input type="text" id="venta-cuit-cliente"></div>
+                                <div class="form-group"><label for="venta-rz-cliente">Razón Social (opcional)</label><input type="text" id="venta-rz-cliente"></div>
+                            </div>
+                            <div class="form-group"><label for="venta-actividad">Actividad Principal</label><select id="venta-actividad"></select></div>
+                            <div class="form-row">
+                                <div class="form-group"><label for="venta-gravado">Monto Gravado</label><input type="number" step="0.01" id="venta-gravado" value="0.00" required></div>
+                                <div class="form-group"><label for="venta-no-gravado">Monto No Gravado/Exento</label><input type="number" step="0.01" id="venta-no-gravado" value="0.00" required></div>
+                                 <div class="form-group"><label for="venta-total">Importe Total</label><input type="number" step="0.01" id="venta-total" value="0.00" required></div>
+                            </div>
+                            <div class="form-group">
+                                <label>Asignación de Ingresos</label>
+                                <div class="radio-group">
+                                    <input type="radio" id="radio-general" name="tipo-asignacion" value="GENERAL" checked><label for="radio-general">Régimen General</label>
+                                    <input type="radio" id="radio-directa" name="tipo-asignacion" value="DIRECTA"><label for="radio-directa">Asignación Directa</label>
+                                </div>
+                            </div>
+                            <div id="panel-asignacion-directa" style="display: none;">
+                                <h3>Detalle de Asignación Directa</h3>
+                                <div id="grid-asignacion-directa-wrapper"></div>
+                                <button type="button" onclick="agregarFilaAsignacion()">+ Agregar Jurisdicción</button>
+                                <div class="summary">
+                                    <div>Base a Asignar: <span id="label-base-a-asignar">0.00</span></div>
+                                    <div>Total Asignado: <span id="label-total-asignado">0.00</span></div>
+                                    <div id="div-diferencia">Diferencia: <span id="label-diferencia">0.00</span></div>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" id="btn-guardar-venta">Guardar Venta</button>
+                                <button type="button" onclick="limpiarFormularioVenta()">Limpiar / Nuevo</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="panel card" style="flex: 3;">
+                        <h2>Comprobantes Registrados</h2>
+                        <div class="form-inline">
+                            <label for="ventas-anio">Año:</label><input type="number" id="ventas-anio" style="width: 80px;">
+                            <label for="ventas-mes">Mes:</label><select id="ventas-mes"></select>
+                            <button onclick="cargarVentas()">Cargar</button>
+                        </div>
+                        <div id="grid-ventas-wrapper"></div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- MÓDULO DE CRÉDITOS FISCALES -->
+            <section id="module-creditos" class="module">
+                <h1>Gestión de Créditos Fiscales</h1>
+                <div class="tab-nav">
+                    <button class="tab-link active" onclick="showTab('retenciones')">Retenciones</button>
+                    <button class="tab-link" onclick="showTab('percepciones')">Percepciones</button>
+                    <button class="tab-link" onclick="showTab('saldos')">Saldos a Favor</button>
+                </div>
+                <div class="tab-content">
+                    <!-- Pestaña Retenciones -->
+                    <div id="tab-retenciones" class="tab-pane active">
+                        <div class="two-panel-layout">
+                            <div class="panel card">
+                                <h2 id="retencion-form-titulo">Nueva Retención</h2>
+                                <form id="form-retencion" onsubmit="event.preventDefault(); guardarRetencion();">
+                                    <div class="form-group"><label for="ret-fecha">Fecha (DD/MM/YYYY)</label><input type="text" id="ret-fecha" required></div>
+                                    <div class="form-group"><label for="ret-jur">Jurisdicción</label><select id="ret-jur"></select></div>
+                                    <div class="form-group"><label for="ret-cuit">CUIT Agente</label><input type="text" id="ret-cuit" required></div>
+                                    <div class="form-group"><label for="ret-nro">Nro. Comprobante</label><input type="text" id="ret-nro" required></div>
+                                    <div class="form-group"><label for="ret-monto">Monto</label><input type="number" step="0.01" id="ret-monto" value="0.00" required></div>
+                                    <div class="form-actions"><button type="submit">Guardar</button><button type="button" onclick="limpiarFormularioRetencion()">Limpiar</button></div>
+                                </form>
+                            </div>
+                            <div class="panel card">
+                                <h2>Retenciones Cargadas</h2>
+                                <div id="grid-retenciones-wrapper"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Pestaña Percepciones -->
+                    <div id="tab-percepciones" class="tab-pane">
+                        <div class="two-panel-layout">
+                            <div class="panel card">
+                                <h2 id="percepcion-form-titulo">Nueva Percepción</h2>
+                                <form id="form-percepcion" onsubmit="event.preventDefault(); guardarPercepcion();">
+                                    <div class="form-group"><label for="per-fecha">Fecha (DD/MM/YYYY)</label><input type="text" id="per-fecha" required></div>
+                                    <div class="form-group"><label for="per-jur">Jurisdicción</label><select id="per-jur"></select></div>
+                                    <div class="form-group"><label for="per-cuit">CUIT Agente</label><input type="text" id="per-cuit" required></div>
+                                    <div class="form-group"><label for="per-nro">Nro. Factura Compra</label><input type="text" id="per-nro" required></div>
+                                    <div class="form-group"><label for="per-monto">Monto</label><input type="number" step="0.01" id="per-monto" value="0.00" required></div>
+                                    <div class="form-actions"><button type="submit">Guardar</button><button type="button" onclick="limpiarFormularioPercepcion()">Limpiar</button></div>
+                                </form>
+                            </div>
+                            <div class="panel card">
+                                <h2>Percepciones Cargadas</h2>
+                                <div id="grid-percepciones-wrapper"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Pestaña Saldos a Favor -->
+                    <div id="tab-saldos" class="tab-pane">
+                        <div class="two-panel-layout">
+                            <div class="panel card">
+                                <h2 id="saldo-form-titulo">Nuevo Saldo a Favor</h2>
+                                <form id="form-saldo" onsubmit="event.preventDefault(); guardarSaldoAFavor();">
+                                    <div class="form-group"><label for="sal-periodo">Período (YYYY-MM)</label><input type="text" id="sal-periodo" placeholder="Ej: 2025-06" required></div>
+                                    <div class="form-group"><label for="sal-jur">Jurisdicción</label><select id="sal-jur"></select></div>
+                                    <div class="form-group"><label for="sal-monto">Monto</label><input type="number" step="0.01" id="sal-monto" value="0.00" required></div>
+                                    <div class="form-actions"><button type="submit">Guardar</button><button type="button" onclick="limpiarFormularioSaldo()">Limpiar</button></div>
+                                </form>
+                            </div>
+                            <div class="panel card">
+                                <h2>Saldos a Favor Cargados</h2>
+                                <div id="grid-saldos-wrapper"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+    <script src="https://unpkg.com/gridjs-plugin-nested-table/dist/nested-table.umd.js"></script>
+    <!-- CORRECCIÓN: Añadimos 'defer' para asegurar que los scripts de arriba carguen primero -->
+    <script type="module" src="/src/main.js" defer></script>
+</body>
+</html>
