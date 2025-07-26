@@ -1,25 +1,62 @@
-import { formatearFecha, gridJsLocale } from '../main.js';
+import { formatearFecha, dataTablesLocale } from '../main.js';
 
 let retencionActivaId = null, percepcionActivaId = null, saldoActivoId = null;
 
 export function inicializarGridCreditos() {
-    if (window.gridRetenciones) return;
-    window.gridRetenciones = new gridjs.Grid({
-        columns: ['Fecha', 'Jurisdicción', 'CUIT Agente', 'Nro Comp.', 'Monto', { name: 'Acciones', sort: false, width: '120px', formatter: (cell, row) => gridjs.html(`<button onclick="cargarRetencionParaEditar(${row.cells[6].data})">Editar</button><button class="btn-danger" onclick="eliminarRetencion(${row.cells[6].data})">Borrar</button>`) }, { name: 'ID', hidden: true }],
-        data: [], search: true, sort: true, pagination: { limit: 5 }, language: gridJsLocale
-    }).render(document.getElementById('grid-retenciones-wrapper'));
+    if (!$.fn.DataTable.isDataTable('#tabla-retenciones')) {
+        $('#tabla-retenciones').DataTable({
+            columns: [
+                { data: 'fecha', render: data => formatearFecha(data) },
+                { data: 'id_jurisdiccion', render: id => window.jurisdiccionesGlobal.find(j => j.id === id)?.nombre || 'N/A' },
+                { data: 'cuit_agente_retencion' },
+                { data: 'nro_comprobante_retencion' },
+                { data: 'monto', render: data => data.toFixed(2) },
+                {
+                    data: 'id', orderable: false, width: '120px', render: (id) =>
+                        `<button class="btn btn-sm btn-secondary" onclick="cargarRetencionParaEditar(${id})">Editar</button>
+                         <button class="btn btn-sm btn-danger" onclick="eliminarRetencion(${id})">Borrar</button>`
+                }
+            ],
+            language: dataTablesLocale,
+            order: [[0, 'desc']]
+        });
+    }
 
-    if (window.gridPercepciones) return;
-    window.gridPercepciones = new gridjs.Grid({
-        columns: ['Fecha', 'Jurisdicción', 'CUIT Agente', 'Nro Factura', 'Monto', { name: 'Acciones', sort: false, width: '120px', formatter: (cell, row) => gridjs.html(`<button onclick="cargarPercepcionParaEditar(${row.cells[5].data})">Editar</button><button class="btn-danger" onclick="eliminarPercepcion(${row.cells[5].data})">Borrar</button>`) }, { name: 'ID', hidden: true }],
-        data: [], search: true, sort: true, pagination: { limit: 5 }, language: gridJsLocale
-    }).render(document.getElementById('grid-percepciones-wrapper'));
+    if (!$.fn.DataTable.isDataTable('#tabla-percepciones')) {
+        $('#tabla-percepciones').DataTable({
+             columns: [
+                { data: 'fecha', render: data => formatearFecha(data) },
+                { data: 'id_jurisdiccion', render: id => window.jurisdiccionesGlobal.find(j => j.id === id)?.nombre || 'N/A' },
+                { data: 'cuit_agente_percepcion' },
+                { data: 'nro_factura_compra' },
+                { data: 'monto', render: data => data.toFixed(2) },
+                {
+                    data: 'id', orderable: false, width: '120px', render: (id) =>
+                        `<button class="btn btn-sm btn-secondary" onclick="cargarPercepcionParaEditar(${id})">Editar</button>
+                         <button class="btn btn-sm btn-danger" onclick="eliminarPercepcion(${id})">Borrar</button>`
+                }
+            ],
+            language: dataTablesLocale,
+            order: [[0, 'desc']]
+        });
+    }
 
-    if (window.gridSaldos) return;
-    window.gridSaldos = new gridjs.Grid({
-        columns: ['Período', 'Jurisdicción', 'Monto', { name: 'Acciones', sort: false, width: '120px', formatter: (cell, row) => gridjs.html(`<button onclick="cargarSaldoParaEditar(${row.cells[3].data})">Editar</button><button class="btn-danger" onclick="eliminarSaldoAFavor(${row.cells[3].data})">Borrar</button>`) }, { name: 'ID', hidden: true }],
-        data: [], search: true, sort: true, pagination: { limit: 5 }, language: gridJsLocale
-    }).render(document.getElementById('grid-saldos-wrapper'));
+    if (!$.fn.DataTable.isDataTable('#tabla-saldos')) {
+        $('#tabla-saldos').DataTable({
+            columns: [
+                { data: 'periodo' },
+                { data: 'id_jurisdiccion', render: id => window.jurisdiccionesGlobal.find(j => j.id === id)?.nombre || 'N/A' },
+                { data: 'monto', render: data => data.toFixed(2) },
+                {
+                    data: 'id', orderable: false, width: '120px', render: (id) =>
+                        `<button class="btn btn-sm btn-secondary" onclick="cargarSaldoParaEditar(${id})">Editar</button>
+                         <button class="btn btn-sm btn-danger" onclick="eliminarSaldoAFavor(${id})">Borrar</button>`
+                }
+            ],
+            language: dataTablesLocale,
+            order: [[0, 'desc']]
+        });
+    }
 }
 
 export function setupModuloCreditos() {
@@ -45,9 +82,9 @@ export function showTab(tabName) {
 
 export async function cargarTodosLosCreditos() {
     if (!window.clienteActivoId) {
-        if(window.gridRetenciones) window.gridRetenciones.updateConfig({ data: [] }).forceRender();
-        if(window.gridPercepciones) window.gridPercepciones.updateConfig({ data: [] }).forceRender();
-        if(window.gridSaldos) window.gridSaldos.updateConfig({ data: [] }).forceRender();
+        $('#tabla-retenciones').DataTable().clear().draw();
+        $('#tabla-percepciones').DataTable().clear().draw();
+        $('#tabla-saldos').DataTable().clear().draw();
         return;
     }
     await Promise.all([
@@ -59,9 +96,8 @@ export async function cargarTodosLosCreditos() {
 
 // --- Retenciones ---
 export async function cargarRetenciones() {
-    const retenciones = await window.go.main.App.GetRetenciones(window.clienteActivoId) || [];
-    const data = retenciones.map(r => [formatearFecha(r.fecha), window.jurisdiccionesGlobal.find(j => j.id === r.id_jurisdiccion)?.nombre, r.cuit_agente_retencion, r.nro_comprobante_retencion, r.monto.toFixed(2), r.id]);
-    if(window.gridRetenciones) window.gridRetenciones.updateConfig({ data: data }).forceRender();
+    const data = await window.go.main.App.GetRetenciones(window.clienteActivoId) || [];
+    $('#tabla-retenciones').DataTable().clear().rows.add(data).draw();
 }
 
 export function limpiarFormularioRetencion() {
@@ -115,9 +151,8 @@ export async function cargarRetencionParaEditar(id) {
 
 // --- Percepciones ---
 export async function cargarPercepciones() {
-    const percepciones = await window.go.main.App.GetPercepciones(window.clienteActivoId) || [];
-    const data = percepciones.map(p => [formatearFecha(p.fecha), window.jurisdiccionesGlobal.find(j => j.id === p.id_jurisdiccion)?.nombre, p.cuit_agente_percepcion, p.nro_factura_compra, p.monto.toFixed(2), p.id]);
-    if(window.gridPercepciones) window.gridPercepciones.updateConfig({ data: data }).forceRender();
+    const data = await window.go.main.App.GetPercepciones(window.clienteActivoId) || [];
+    $('#tabla-percepciones').DataTable().clear().rows.add(data).draw();
 }
 
 export function limpiarFormularioPercepcion() {
@@ -168,12 +203,10 @@ export async function cargarPercepcionParaEditar(id) {
     }
 }
 
-
 // --- Saldos a Favor ---
 export async function cargarSaldosAFavor() {
-    const saldos = await window.go.main.App.GetSaldosAFavor(window.clienteActivoId) || [];
-    const data = saldos.map(s => [s.periodo, window.jurisdiccionesGlobal.find(j => j.id === s.id_jurisdiccion)?.nombre, s.monto.toFixed(2), s.id]);
-    if(window.gridSaldos) window.gridSaldos.updateConfig({ data: data }).forceRender();
+    const data = await window.go.main.App.GetSaldosAFavor(window.clienteActivoId) || [];
+    $('#tabla-saldos').DataTable().clear().rows.add(data).draw();
 }
 
 export function limpiarFormularioSaldo() {

@@ -3,13 +3,12 @@
 <head>
     <title>Liquidador IIBB</title>
     <meta charset="UTF-8">
-    <!-- CSS de Grid.js -->
-    <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.css" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
     <div class="app-container">
-        <!-- MENÚ DE NAVEGACIÓN LATERAL -->
         <nav class="sidebar">
             <div class="sidebar-header">
                 <h2>Liquidador IIBB</h2>
@@ -28,14 +27,12 @@
             </div>
         </nav>
 
-        <!-- CONTENIDO PRINCIPAL QUE CAMBIA -->
         <main class="main-content">
             <header class="main-header">
                 <label for="cliente-activo-select">Cliente Activo:</label>
                 <select id="cliente-activo-select"></select>
             </header>
 
-            <!-- MÓDULO DE LIQUIDACIÓN -->
             <section id="module-liquidacion" class="module">
                 <h1>Nueva Liquidación Mensual (CM03)</h1>
                 <div class="card">
@@ -55,7 +52,23 @@
                 </div>
                 <div class="card">
                     <h2>Resultado de la Nueva Liquidación</h2>
-                    <div id="grid-liquidacion-wrapper"></div>
+                    <table id="tabla-liquidacion" class="table table-striped" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Jurisdicción</th>
+                                <th>Base Imponible</th>
+                                <th>Alícuota Media</th>
+                                <th>Imp. Determinado</th>
+                                <th>Saldo Ant.</th>
+                                <th>Retenciones</th>
+                                <th>Percepciones</th>
+                                <th>Total Créditos</th>
+                                <th>Saldo Final</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                     <div class="summary" style="margin-top: 2em; text-align: right; font-size: 1.1em;">
                         <div ><strong>Total Impuesto Determinado:</strong> <span id="total-impuesto">0.00</span></div>
                         <div><strong>Total Créditos del Período:</strong> <span id="total-creditos">0.00</span></div>
@@ -64,18 +77,25 @@
                 </div>
             </section>
             
-            <!-- NUEVO MÓDULO DE LIQUIDACIONES GUARDADAS -->
-             <section id="module-liquidaciones-guardadas" class="module">
+            <section id="module-liquidaciones-guardadas" class="module">
                 <h1>Liquidaciones Guardadas</h1>
                 <div class="card">
                     <h2>Historial de Liquidaciones</h2>
-                    <p>Aquí puedes ver y administrar las liquidaciones que ya has generado y guardado para el cliente activo.</p>
-                    <div id="grid-liquidaciones-guardadas-wrapper"></div>
+                    <table id="tabla-liquidaciones-guardadas" class="table table-striped" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Período</th>
+                                <th>Tipo</th>
+                                <th>Fecha de Creación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </section>
 
 
-            <!-- MÓDULO DE CLIENTES -->
             <section id="module-clientes" class="module">
                 <h1>Gestión de Clientes</h1>
                 <div class="card">
@@ -89,11 +109,20 @@
                 </div>
                 <div class="card">
                     <h2>Clientes Registrados</h2>
-                    <div id="grid-clientes-wrapper"></div>
+                    <table id="tabla-clientes" class="table table-striped" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Razón Social</th>
+                                <th>CUIT</th>
+                                <th>Fecha Alta</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </section>
 
-            <!-- MÓDULO DE ACTIVIDADES Y ALÍCUOTAS -->
             <section id="module-actividades" class="module">
                 <h1>Actividades y Alícuotas</h1>
                 <div class="two-panel-layout">
@@ -108,14 +137,21 @@
                     </div>
                     <div class="panel card">
                         <h2>Alícuotas para <span id="actividad-seleccionada-nombre">...</span></h2>
-                        <div id="grid-alicuotas-wrapper"></div>
+                        <table id="tabla-alicuotas" class="table table-striped" style="width:100%">
+                           <thead>
+                                <tr>
+                                    <th>Jurisdicción</th>
+                                    <th>Alícuota (%)</th>
+                                </tr>
+                           </thead>
+                           <tbody></tbody>
+                        </table>
                         <button onclick="guardarAlicuotas()">Guardar Alícuotas</button>
                     </div>
                 </div>
             </section>
-
-            <!-- MÓDULO DE COEFICIENTES ANUALES -->
-            <section id="module-coeficientes" class="module">
+            
+             <section id="module-coeficientes" class="module">
                 <h1>Coeficientes Anuales</h1>
                 <div class="main-header" style="border-top: 1px solid var(--color-border); padding-top: 1em;">
                     <label for="coef-anio-fiscal">Año Fiscal:</label>
@@ -125,18 +161,25 @@
                 <div class="two-panel-layout">
                     <div class="panel card">
                         <h2>Períodos Cargados</h2>
-                        <div id="grid-coeficientes-resumen-wrapper"></div>
+                        <table id="tabla-coeficientes-resumen" class="table table-striped" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Período</th>
+                                    <th>Suma Coeficientes</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                        </table>
                         <button onclick="nuevoPeriodoCoeficientes()">Nuevo Período</button>
                     </div>
                     <div class="panel card">
                         <h2 id="coef-detalle-titulo">Detalle de Coeficientes</h2>
-                         <div id="grid-coeficientes-detalle-wrapper"></div>
+                         <table id="tabla-coeficientes-detalle" class="table table-striped" style="width:100%"></table>
                         <button id="btn-guardar-coeficientes" style="display: none;" onclick="guardarCoeficientes()">Guardar Cambios</button>
                     </div>
                 </div>
             </section>
 
-            <!-- MÓDULO DE CARGA DE VENTAS -->
             <section id="module-ventas" class="module">
                 <h1>Carga de Comprobantes de Venta</h1>
                 <div class="two-panel-layout">
@@ -191,12 +234,21 @@
                             <label for="ventas-mes">Mes:</label><select id="ventas-mes"></select>
                             <button onclick="cargarVentas()">Cargar</button>
                         </div>
-                        <div id="grid-ventas-wrapper"></div>
+                        <table id="tabla-ventas" class="table table-striped" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Número</th>
+                                    <th>Total</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
                 </div>
             </section>
             
-            <!-- MÓDULO DE CRÉDITOS FISCALES -->
             <section id="module-creditos" class="module">
                 <h1>Gestión de Créditos Fiscales</h1>
                 <div class="tab-nav">
@@ -205,7 +257,6 @@
                     <button class="tab-link" onclick="showTab('saldos')">Saldos a Favor</button>
                 </div>
                 <div class="tab-content">
-                    <!-- Pestaña Retenciones -->
                     <div id="tab-retenciones" class="tab-pane active">
                         <div class="two-panel-layout">
                             <div class="panel card">
@@ -221,13 +272,23 @@
                             </div>
                             <div class="panel card">
                                 <h2>Retenciones Cargadas</h2>
-                                <div id="grid-retenciones-wrapper"></div>
+                                <table id="tabla-retenciones" class="table table-striped" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Jurisdicción</th>
+                                            <th>CUIT Agente</th>
+                                            <th>Nro. Comp.</th>
+                                            <th>Monto</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                </table>
                             </div>
                         </div>
                     </div>
-                    <!-- Pestaña Percepciones -->
                     <div id="tab-percepciones" class="tab-pane">
-                        <div class="two-panel-layout">
+                         <div class="two-panel-layout">
                             <div class="panel card">
                                 <h2 id="percepcion-form-titulo">Nueva Percepción</h2>
                                 <form id="form-percepcion" onsubmit="event.preventDefault(); guardarPercepcion();">
@@ -241,11 +302,21 @@
                             </div>
                             <div class="panel card">
                                 <h2>Percepciones Cargadas</h2>
-                                <div id="grid-percepciones-wrapper"></div>
+                                <table id="tabla-percepciones" class="table table-striped" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Jurisdicción</th>
+                                            <th>CUIT Agente</th>
+                                            <th>Nro. Factura</th>
+                                            <th>Monto</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                </table>
                             </div>
                         </div>
                     </div>
-                    <!-- Pestaña Saldos a Favor -->
                     <div id="tab-saldos" class="tab-pane">
                         <div class="two-panel-layout">
                             <div class="panel card">
@@ -259,7 +330,16 @@
                             </div>
                             <div class="panel card">
                                 <h2>Saldos a Favor Cargados</h2>
-                                <div id="grid-saldos-wrapper"></div>
+                                <table id="tabla-saldos" class="table table-striped" style="width:100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Período</th>
+                                            <th>Jurisdicción</th>
+                                            <th>Monto</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -268,9 +348,9 @@
         </main>
     </div>
     
-    <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
-    <script src="https://unpkg.com/gridjs-plugin-nested-table/dist/nested-table.umd.js"></script>
-    <!-- CORRECCIÓN: Añadimos 'defer' para asegurar que los scripts de arriba carguen primero -->
-    <script type="module" src="/src/main.js" defer></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.min.js"></script>
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -1,19 +1,29 @@
-import { formatearFecha, cargarDatosGlobales, gridJsLocale } from '../main.js';
+import { formatearFecha, cargarDatosGlobales, dataTablesLocale } from '../main.js';
 
 export function inicializarGridClientes() {
-    if (window.gridClientes) return;
-    window.gridClientes = new gridjs.Grid({
-        columns: [ 'Razón Social', 'CUIT', { name: 'Fecha Alta', formatter: (cell) => formatearFecha(cell) }, { name: 'Acciones', sort: false, width: '100px',
-            formatter: (cell, row) => gridjs.html(`<button class="btn-danger" onclick="iniciarBorradoCliente(${row.cells[3].data}, '${row.cells[4].data}')">Borrar</button>`)
-        }, { name: 'ID', hidden: true }, { name: 'RZ_raw', hidden: true }],
-        data: [], search: true, sort: true, pagination: { limit: 10 }, language: gridJsLocale
-    }).render(document.getElementById('grid-clientes-wrapper'));
+    if ($.fn.DataTable.isDataTable('#tabla-clientes')) return;
+    $('#tabla-clientes').DataTable({
+        columns: [
+            { data: 'razon_social', title: 'Razón Social' },
+            { data: 'cuit', title: 'CUIT' },
+            { data: 'fecha_alta', title: 'Fecha Alta', render: data => formatearFecha(data) },
+            {
+                data: 'id',
+                title: 'Acciones',
+                orderable: false,
+                width: '100px',
+                render: (data, type, row) => `<button class="btn btn-danger btn-sm" onclick="iniciarBorradoCliente(${row.id}, '${row.razon_social}')">Borrar</button>`
+            }
+        ],
+        language: dataTablesLocale
+    });
 }
 
 export function cargarClientes() {
-    if (!window.gridClientes) return;
-    const data = window.clientesGlobal.map(c => [c.razon_social, c.cuit, c.fecha_alta, c.id, c.razon_social]);
-    window.gridClientes.updateConfig({ data: data }).forceRender();
+    if ($.fn.DataTable.isDataTable('#tabla-clientes')) {
+        const table = $('#tabla-clientes').DataTable();
+        table.clear().rows.add(window.clientesGlobal || []).draw();
+    }
 }
 
 export async function guardarCliente() {

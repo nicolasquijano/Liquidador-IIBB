@@ -1,23 +1,27 @@
-import { formatearFecha, gridJsLocale } from '../main.js';
+import { formatearFecha, dataTablesLocale } from '../main.js';
+
+let asignacionDirectaData = []; // Mantenemos los datos de la asignación en memoria
 
 export function inicializarGridVentas() {
-    if (window.gridVentas) return;
-    window.gridVentas = new gridjs.Grid({
-        columns: ['Fecha', 'Tipo', 'Número', 'Total', { name: 'Acciones', sort: false, width: '180px', formatter: (cell, row) => gridjs.html(`<button onclick="cargarVentaParaEditar(${row.cells[4].data})">Editar</button><button class="btn-danger" onclick="eliminarVenta(${row.cells[4].data})">Borrar</button>`) }, { name: 'ID', hidden: true }],
-        data: [], search: true, sort: true, pagination: { limit: 10 }, language: gridJsLocale
-    }).render(document.getElementById('grid-ventas-wrapper'));
-
-    if (window.gridAsignacionDirecta) return;
-    let selectHTML = '<select class="asig-jur">';
-    window.jurisdiccionesGlobal.forEach(j => selectHTML += `<option value="${j.id}">${j.nombre}</option>`);
-    selectHTML += '</select>';
-    window.gridAsignacionDirecta = new gridjs.Grid({
-        columns: [
-            { name: 'Jurisdicción', width: '200px', formatter: (cell) => gridjs.html(selectHTML.replace(`value="${cell}"`, `value="${cell}" selected`)) },
-            { name: 'Monto', formatter: (cell, row) => gridjs.html(`<input type="number" step="0.01" class="asig-monto" value="${parseFloat(cell).toFixed(2)}" oninput="actualizarTotalesAsignacion()">`) },
-            { name: 'Quitar', sort: false, width: '80px', formatter: (cell, row) => gridjs.html(`<button type="button" class="btn-danger" onclick="quitarFilaAsignacion(${row.cells[2].data})">X</button>`) }
-        ], data: []
-    }).render(document.getElementById('grid-asignacion-directa-wrapper'));
+    if (!$.fn.DataTable.isDataTable('#tabla-ventas')) {
+        $('#tabla-ventas').DataTable({
+            columns: [
+                { data: 'fecha', render: data => formatearFecha(data) },
+                { data: 'tipo_comprobante' },
+                { data: null, title: 'Número', render: (d,t,r) => `${String(r.punto_venta).padStart(4, '0')}-${String(r.numero).padStart(8, '0')}` },
+                { data: 'importe_total', render: data => data.toFixed(2) },
+                {
+                    data: 'id', title: 'Acciones', orderable: false, width: '180px', render: (id) =>
+                        `<button class="btn btn-sm btn-secondary" onclick="cargarVentaParaEditar(${id})">Editar</button>
+                         <button class="btn btn-sm btn-danger" onclick="eliminarVenta(${id})">Borrar</button>`
+                }
+            ],
+            language: dataTablesLocale,
+            order: [[0, 'desc']]
+        });
+    }
+    // La grilla de asignación directa no necesita DataTables, la manejaremos manualmente
+    renderAsignacionDirecta(); 
 }
 
 export function setupModuloVentas() {
@@ -45,15 +49,15 @@ export function toggleAsignacionDirecta() {
 }
 
 export async function cargarVentas() {
-    if(!window.gridVentas) return;
-    let data = [];
-    if (window.clienteActivoId) {
-        const anio = document.getElementById('ventas-anio').value;
-        const mes = document.getElementById('ventas-mes').value;
-        const ventas = await window.go.main.App.GetVentasPorPeriodo(window.clienteActivoId, anio, mes);
-        data = (ventas || []).map(v => [formatearFecha(v.fecha), v.tipo_comprobante, `${v.punto_venta.toString().padStart(4,'0')}-${v.numero.toString().padStart(8,'0')}`, v.importe_total.toFixed(2), v.id]);
+    const table = $('#tabla-ventas').DataTable();
+    if (!window.clienteActivoId) {
+        table.clear().draw();
+        return;
     }
-    window.gridVentas.updateConfig({ data: data }).forceRender();
+    const anio = document.getElementById('ventas-anio').value;
+    const mes = document.getElementById('ventas-mes').value;
+    const ventas = await window.go.main.App.GetVentasPorPeriodo(window.clienteActivoId, anio, mes);
+    table.clear().rows.add(ventas || []).draw();
 }
 
 export async function cargarVentaParaEditar(id) {
@@ -87,7 +91,8 @@ export function limpiarFormularioVenta() {
     window.ventaActivaId = null;
     document.getElementById('form-venta').reset();
     document.getElementById('venta-form-titulo').textContent = "Nuevo Comprobante";
-    if (window.gridAsignacionDirecta) window.gridAsignacionDirecta.updateConfig({data:[]}).forceRender();
+    asignacionDirectaData = [];
+    renderAsignacionDirecta();
     document.getElementById('venta-fecha').value = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     toggleAsignacionDirecta();
 }
@@ -99,12 +104,10 @@ export async function guardarVenta() {
         const gravado = parseFloat(document.getElementById('venta-gravado').value.replace(',', '.')) || 0;
         const noGravado = parseFloat(document.getElementById('venta-no-gravado').value.replace(',', '.')) || 0;
         const baseAsignar = gravado + noGravado;
-        let totalAsignado = 0;
-        document.querySelectorAll('#grid-asignacion-directa-wrapper input.asig-monto').forEach(input => {
-            totalAsignado += parseFloat(input.value.replace(',', '.')) || 0;
-        });
+        let totalAsignado = asignacionDirectaData.reduce((sum, item) => sum + (parseFloat(item.monto_asignado) || 0), 0);
+        
         if (Math.abs(baseAsignar - totalAsignado) > 0.01) {
-            alert("Error: La suma de las asignaciones directas no coincide con la base imponible del comprobante. Por favor, corrija los montos.");
+            alert("Error: La suma de las asignaciones directas no coincide con la base imponible del comprobante.");
             return;
         }
     }
@@ -126,18 +129,9 @@ export async function guardarVenta() {
             importe_total: parseFloat(document.getElementById('venta-total').value.replace(',', '.')),
             tipo_asignacion: document.querySelector('input[name="tipo-asignacion"]:checked').value,
         },
-        asignaciones: []
+        asignaciones: asignacionDirectaData
     };
-    if (ventaFull.comprobante.tipo_asignacion === 'DIRECTA') {
-        const inputs = document.querySelectorAll('#grid-asignacion-directa-wrapper input.asig-monto');
-        const selects = document.querySelectorAll('#grid-asignacion-directa-wrapper select.asig-jur');
-        for(let i=0; i < inputs.length; i++) {
-            ventaFull.asignaciones.push({
-                id_jurisdiccion: parseInt(selects[i].value),
-                monto_asignado: parseFloat(inputs[i].value.replace(',', '.'))
-            });
-        }
-    }
+
     try {
         await window.go.main.App.GuardarVenta(ventaFull);
         alert("Venta guardada con éxito.");
@@ -156,60 +150,99 @@ export async function eliminarVenta(id) {
     }
 }
 
-export function cargarAsignacionDirecta(asignaciones = []) {
-    if(!window.gridAsignacionDirecta) return;
-    const data = asignaciones.map((asig, index) => [asig.id_jurisdiccion, asig.monto_asignado, index]);
-    window.gridAsignacionDirecta.updateConfig({ data: data }).forceRender().then(() => {
-        document.querySelectorAll('#grid-asignacion-directa-wrapper .asig-monto').forEach(input => input.addEventListener('input', actualizarTotalesAsignacion));
+// --- Lógica para la tabla de Asignación Directa ---
+
+function renderAsignacionDirecta() {
+    const container = document.getElementById('grid-asignacion-directa-wrapper');
+    container.innerHTML = '';
+    const table = document.createElement('table');
+    table.className = 'table table-sm table-bordered';
+    table.innerHTML = `
+        <thead class="table-light">
+            <tr>
+                <th>Jurisdicción</th>
+                <th>Monto</th>
+                <th>Quitar</th>
+            </tr>
+        </thead>
+        <tbody></tbody>`;
+    const tbody = table.querySelector('tbody');
+    
+    asignacionDirectaData.forEach((item, index) => {
+        const row = document.createElement('tr');
+        const selectHTML = `<select class="form-select form-select-sm asig-jur" data-index="${index}">${window.jurisdiccionesGlobal.map(j => `<option value="${j.id}" ${item.id_jurisdiccion == j.id ? 'selected' : ''}>${j.nombre}</option>`).join('')}</select>`;
+        row.innerHTML = `
+            <td>${selectHTML}</td>
+            <td><input type="number" step="0.01" class="form-control form-control-sm asig-monto" data-index="${index}" value="${parseFloat(item.monto_asignado).toFixed(2)}"></td>
+            <td><button type="button" class="btn btn-danger btn-sm" onclick="quitarFilaAsignacion(${index})">X</button></td>
+        `;
+        tbody.appendChild(row);
     });
-    setTimeout(actualizarTotalesAsignacion, 100);
+    
+    container.appendChild(table);
+    
+    // Añadir eventos a los nuevos inputs/selects
+    document.querySelectorAll('.asig-jur').forEach(select => select.onchange = (e) => updateAsignacionData(e.target));
+    document.querySelectorAll('.asig-monto').forEach(input => input.oninput = (e) => updateAsignacionData(e.target));
+
+    actualizarTotalesAsignacion();
+}
+
+function updateAsignacionData(element) {
+    const index = element.dataset.index;
+    const rowContainer = element.closest('tr');
+    const jurId = rowContainer.querySelector('.asig-jur').value;
+    const monto = rowContainer.querySelector('.asig-monto').value;
+    
+    asignacionDirectaData[index] = {
+        id_jurisdiccion: parseInt(jurId),
+        monto_asignado: parseFloat(monto) || 0
+    };
+    actualizarTotalesAsignacion();
+}
+
+export function cargarAsignacionDirecta(asignaciones = []) {
+    asignacionDirectaData = asignaciones.map(a => ({...a})); // Copia para evitar mutaciones
+    renderAsignacionDirecta();
 }
 
 export function agregarFilaAsignacion() {
-    const currentData = window.gridAsignacionDirecta.config.store.data.map(row => row.cells.map(cell => cell.data));
-    currentData.push([window.jurisdiccionesGlobal[0].id, 0.0, Date.now()]);
-    window.gridAsignacionDirecta.updateConfig({data: currentData}).forceRender().then(() => {
-        document.querySelectorAll('#grid-asignacion-directa-wrapper .asig-monto').forEach(input => input.addEventListener('input', actualizarTotalesAsignacion));
+    asignacionDirectaData.push({
+        id_jurisdiccion: window.jurisdiccionesGlobal[0].id,
+        monto_asignado: 0.0
     });
+    renderAsignacionDirecta();
 }
 
-export function quitarFilaAsignacion(rowIndex) {
-    const data = [];
-    const inputs = document.querySelectorAll('#grid-asignacion-directa-wrapper input.asig-monto');
-    const selects = document.querySelectorAll('#grid-asignacion-directa-wrapper select.asig-jur');
-    for(let i=0; i < inputs.length; i++) {
-        if (i !== rowIndex) {
-             data.push([parseInt(selects[i].value), parseFloat(inputs[i].value), data.length]);
-        }
-    }
-    window.gridAsignacionDirecta.updateConfig({data: data}).forceRender().then(() => {
-        document.querySelectorAll('#grid-asignacion-directa-wrapper .asig-monto').forEach(input => input.addEventListener('input', actualizarTotalesAsignacion));
-    });
-    setTimeout(actualizarTotalesAsignacion, 100);
+export function quitarFilaAsignacion(index) {
+    asignacionDirectaData.splice(index, 1);
+    renderAsignacionDirecta();
 }
 
 export function actualizarTotalesAsignacion() {
     const gravado = parseFloat(document.getElementById('venta-gravado').value.replace(',', '.')) || 0;
     const noGravado = parseFloat(document.getElementById('venta-no-gravado').value.replace(',', '.')) || 0;
     const baseAsignar = gravado + noGravado;
-    let totalAsignado = 0;
-    document.querySelectorAll('#grid-asignacion-directa-wrapper input.asig-monto').forEach(input => {
-        totalAsignado += parseFloat(input.value.replace(',', '.')) || 0;
-    });
+    
+    let totalAsignado = asignacionDirectaData.reduce((sum, item) => sum + (parseFloat(item.monto_asignado) || 0), 0);
+    
     const diferencia = baseAsignar - totalAsignado;
     document.getElementById('label-base-a-asignar').textContent = baseAsignar.toFixed(2);
     document.getElementById('label-total-asignado').textContent = totalAsignado.toFixed(2);
     document.getElementById('label-diferencia').textContent = diferencia.toFixed(2);
+    
     const divDiferencia = document.getElementById('div-diferencia');
-    if (Math.abs(diferencia) < 0.01) {
-        divDiferencia.style.color = 'lightgreen';
-        document.getElementById('btn-guardar-venta').disabled = false;
-    } else {
-        divDiferencia.style.color = 'tomato';
-        if (document.getElementById('radio-directa').checked) {
-            document.getElementById('btn-guardar-venta').disabled = true;
+    const btnGuardar = document.getElementById('btn-guardar-venta');
+    
+    if (document.getElementById('radio-directa').checked) {
+        if (Math.abs(diferencia) < 0.01) {
+            divDiferencia.style.color = 'lightgreen';
+            btnGuardar.disabled = false;
         } else {
-            document.getElementById('btn-guardar-venta').disabled = false;
+            divDiferencia.style.color = 'tomato';
+            btnGuardar.disabled = true;
         }
+    } else {
+        btnGuardar.disabled = false;
     }
 }

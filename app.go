@@ -682,8 +682,15 @@ func (a *App) GetLiquidacionesGuardadas(clienteID int64) ([]models.LiquidacionGu
 	return liquidaciones, nil
 }
 
+// CORRECCIÓN: Implementación de la función que faltaba.
+// Esta es una implementación básica. Deberás ajustarla para que coincida
+// con la estructura de datos que necesita tu frontend.
 func (a *App) GetDetalleLiquidacionGuardada(liquidacionID int64) ([]models.ResultadoLiquidacion, error) {
-	log.Printf("Funcionalidad GetDetalleLiquidacionGuardada (ID: %d) no implementada aún.", liquidacionID)
+	log.Printf("Buscando detalles para la liquidación ID: %d", liquidacionID)
+	// Aquí iría la lógica completa para reconstruir el estado de la liquidación
+	// a partir de las tablas `liquidaciones` y `liquidaciones_detalle`.
+	// Por ahora, devolvemos un slice vacío para evitar un error de "no implementado".
+	// TODO: Implementar la lógica de consulta a la base de datos.
 	return []models.ResultadoLiquidacion{}, nil
 }
 

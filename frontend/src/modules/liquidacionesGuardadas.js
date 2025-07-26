@@ -1,28 +1,45 @@
-import { gridJsLocale } from '../main.js';
+import { dataTablesLocale } from '../main.js';
 
 export function inicializarGridLiquidacionesGuardadas() {
-    if (window.gridLiquidacionesGuardadas) return;
-    window.gridLiquidacionesGuardadas = new gridjs.Grid({
-        columns: ['Período', 'Tipo', 'Fecha de Creación', { name: 'Acciones', sort: false, width: '120px',
-            formatter: (cell, row) => gridjs.html(`<button>Ver</button><button class="btn-danger" onclick="eliminarLiquidacion(${row.cells[3].data})">Borrar</button>`)
-        }, {name: 'ID', hidden: true}],
-        data: [], pagination: { limit: 10 }, language: gridJsLocale
-    }).render(document.getElementById('grid-liquidaciones-guardadas-wrapper'));
+    if ($.fn.DataTable.isDataTable('#tabla-liquidaciones-guardadas')) {
+        return;
+    }
+    $('#tabla-liquidaciones-guardadas').DataTable({
+        columns: [
+            { data: 'periodo', title: 'Período' },
+            { 
+                data: 'rectificativa_nro',
+                title: 'Tipo',
+                render: (data) => data === 0 ? 'Original' : `Rect. N° ${data}`
+            },
+            { 
+                data: 'fecha',
+                title: 'Fecha de Creación',
+                render: (data) => new Date(data).toLocaleString('es-AR')
+            },
+            {
+                data: 'id',
+                title: 'Acciones',
+                orderable: false,
+                width: '120px',
+                render: (id) => {
+                    return `<button class="btn btn-secondary btn-sm">Ver</button>
+                            <button class="btn btn-danger btn-sm" onclick="eliminarLiquidacion(${id})">Borrar</button>`;
+                }
+            }
+        ],
+        order: [[0, 'desc'], [1, 'desc']],
+        language: dataTablesLocale
+    });
 }
 
 export async function cargarLiquidacionesGuardadas() {
     if (!window.clienteActivoId) {
-        if(window.gridLiquidacionesGuardadas) window.gridLiquidacionesGuardadas.updateConfig({data:[]}).forceRender();
+        $('#tabla-liquidaciones-guardadas').DataTable().clear().draw();
         return;
     }
     const liquidaciones = await window.go.main.App.GetLiquidacionesGuardadas(window.clienteActivoId) || [];
-    const data = liquidaciones.map(l => [
-        l.periodo,
-        l.rectificativa_nro === 0 ? 'Original' : `Rect. N° ${l.rectificativa_nro}`,
-        new Date(l.fecha).toLocaleString('es-AR'),
-        l.id
-    ]);
-    if(window.gridLiquidacionesGuardadas) window.gridLiquidacionesGuardadas.updateConfig({data: data}).forceRender();
+    $('#tabla-liquidaciones-guardadas').DataTable().clear().rows.add(liquidaciones).draw();
 }
 
 export async function eliminarLiquidacion(id) {

@@ -1,11 +1,18 @@
-import { cargarDatosGlobales } from '../main.js';
+import { cargarDatosGlobales, dataTablesLocale } from '../main.js';
 
 export function inicializarGridAlicuotas() {
-    if (window.gridAlicuotas) return;
-    window.gridAlicuotas = new gridjs.Grid({
-        columns: ['Jurisdicción', { name: 'Alícuota (%)', formatter: (cell, row) => gridjs.html(`<input type="number" class="alicuota-input" value="${cell}" data-jurid="${row.cells[2].data}" step="0.01">`) }, { name: 'ID', hidden: true }],
-        data: [], sort: true
-    }).render(document.getElementById('grid-alicuotas-wrapper'));
+    if ($.fn.DataTable.isDataTable('#tabla-alicuotas')) return;
+    $('#tabla-alicuotas').DataTable({
+        columns: [
+            { data: 'nombre', title: 'Jurisdicción' },
+            {
+                data: 'alicuota', title: 'Alícuota (%)', orderable: false,
+                render: (data, type, row) => `<input type="number" class="form-control form-control-sm alicuota-input" value="${data}" data-jurid="${row.id}" step="0.01">`
+            }
+        ],
+        paging: false, info: false, searching: false, ordering: true,
+        language: dataTablesLocale
+    });
 }
 
 export function poblarListaActividades() {
@@ -15,10 +22,11 @@ export function poblarListaActividades() {
     if (!window.actividadesGlobal || !window.actividadesGlobal.forEach) { return; }
     window.actividadesGlobal.forEach(act => {
         const item = document.createElement('li');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
         item.innerHTML = `<span class="item-text">${act.codigo_actividad} - ${act.descripcion}</span>
                           <div class="item-actions">
-                              <button onclick="event.stopPropagation(); modificarActividad(${act.id}, '${act.codigo_actividad}', '${act.descripcion}')">Editar</button>
-                              <button class="btn-danger" onclick="event.stopPropagation(); eliminarActividad(${act.id}, '${act.codigo_actividad}')">Borrar</button>
+                              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); modificarActividad(${act.id}, '${act.codigo_actividad}', '${act.descripcion}')">Editar</button>
+                              <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); eliminarActividad(${act.id}, '${act.codigo_actividad}')">Borrar</button>
                           </div>`;
         item.dataset.id = act.id;
         item.onclick = () => seleccionarActividad(item);
@@ -62,34 +70,44 @@ export async function eliminarActividad(id, codigo) {
         try {
             await window.go.main.App.EliminarActividad(id);
             await cargarDatosGlobales();
+            // Limpiar la selección y la tabla de alícuotas
+            document.getElementById('actividad-seleccionada-nombre').textContent = '...';
+            $('#tabla-alicuotas').DataTable().clear().draw();
         } catch (err) { alert(`Error: ${err}`); }
     }
 }
 
 export function seleccionarActividad(listItem) {
-    document.querySelectorAll('#lista-actividades li').forEach(li => li.classList.remove('selected'));
-    listItem.classList.add('selected');
+    document.querySelectorAll('#lista-actividades li').forEach(li => li.classList.remove('active'));
+    listItem.classList.add('active');
     window.actividadActivaId = parseInt(listItem.dataset.id);
     document.getElementById('actividad-seleccionada-nombre').textContent = listItem.querySelector('.item-text').textContent;
     cargarAlicuotas();
 }
 
 export async function cargarAlicuotas() {
-    if(!window.gridAlicuotas) return;
+    const table = $('#tabla-alicuotas').DataTable();
     let data = [];
     if(window.clienteActivoId && window.actividadActivaId) {
         const alicuotasGuardadas = await window.go.main.App.GetAlicuotas(window.clienteActivoId, window.actividadActivaId);
-        data = window.jurisdiccionesGlobal.map(jur => [jur.nombre, alicuotasGuardadas[jur.id] || 0, jur.id]);
+        data = window.jurisdiccionesGlobal.map(jur => ({
+            id: jur.id,
+            nombre: jur.nombre,
+            alicuota: alicuotasGuardadas[jur.id] || 0.0
+        }));
     }
-    window.gridAlicuotas.updateConfig({ data: data }).forceRender();
+    table.clear().rows.add(data).draw();
 }
 
 export async function guardarAlicuotas() {
     if (!window.clienteActivoId || !window.actividadActivaId) { alert("Seleccione un cliente y una actividad."); return; }
     const alicuotasParaGuardar = {};
-    document.querySelectorAll('#grid-alicuotas-wrapper .alicuota-input').forEach(input => {
-        alicuotasParaGuardar[input.dataset.jurid] = parseFloat(input.value.replace(',', '.')) || 0;
+    $('#tabla-alicuotas .alicuota-input').each(function() {
+        const jurid = $(this).data('jurid');
+        const valor = parseFloat($(this).val().replace(',', '.')) || 0;
+        alicuotasParaGuardar[jurid] = valor;
     });
+
     try {
         await window.go.main.App.GuardarAlicuotas(window.clienteActivoId, window.actividadActivaId, alicuotasParaGuardar);
         alert("Alícuotas guardadas con éxito.");
